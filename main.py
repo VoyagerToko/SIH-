@@ -189,6 +189,45 @@ def summarize_comment(text, context=""):
     resp = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
     return resp["message"]["content"].strip()
 
+def generate_overall_summary(comments_list, sentiments):
+    """Generate a comprehensive summary of all comments and their sentiment trends."""
+    # Prepare a condensed representation of comments and their sentiments
+    comment_samples = []
+    for i, comment in enumerate(comments_list):
+        # Take a sample of comments (up to 15)
+        if i < 15:
+            # Get comment text (truncated if needed)
+            text = comment["comment_text"][:150] + "..." if len(comment["comment_text"]) > 150 else comment["comment_text"]
+            sentiment = comment["sentiment"]
+            comment_samples.append(f"Comment {i+1} ({sentiment}): {text}")
+    
+    # Format the sentiment distribution
+    sentiment_counts = []
+    for sentiment, count in sentiments.items():
+        sentiment_counts.append(f"{sentiment}: {count}")
+    
+    # Create the prompt for overall summary
+    prompt = f"""
+    Analyze the following stakeholder comments and their sentiment distribution to create a comprehensive summary.
+    
+    Sentiment Distribution:
+    {', '.join(sentiment_counts)}
+    
+    Comment Samples:
+    {' '.join(comment_samples)}
+    
+    Please provide a 3-4 paragraph summary that:
+    1. Identifies the main themes and concerns across all comments
+    2. Highlights the most significant sentiments and what they indicate
+    3. Notes any important suggestions or feedback trends
+    4. Provides a balanced conclusion about the overall stakeholder response
+    
+    Focus on concrete patterns rather than generalizations. Be specific about the key points raised in the comments.
+    """
+    
+    resp = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
+    return resp["message"]["content"].strip()
+
 ####################################
 # Step 5: Process comments
 ####################################
@@ -281,13 +320,19 @@ def analyze_comments(pdf_path, comments_csv):
         for sentiment in set(r["sentiment"] for r in results)
     }
     
-    # Add a summary row with total comments and sentiment distribution
+    # Generate an overall summary of all comments
+    logger.info("Generating overall comment summary")
+    overall_summary_time = time.time()
+    overall_summary = generate_overall_summary(results, sentiment_distribution)
+    logger.info(f"Overall summary generation took {time.time() - overall_summary_time:.2f}s")
+    
+    # Add a summary row with total comments, sentiment distribution, and overall summary
     summary_row = {
         "comment_id": "SUMMARY",
         "comment_text": f"Total Comments: {len(comments)}",
         "sentiment": "Summary",
-        "summary": f"Total: {len(comments)} | " + " | ".join([f"{key}: {value}" for key, value in sentiment_distribution.items()]),
-        "context_used": ""
+        "summary": overall_summary,
+        "context_used": f"Sentiment Distribution: {', '.join([f'{key}: {value}' for key, value in sentiment_distribution.items()])}"
     }
     
     # Add summary row to results
