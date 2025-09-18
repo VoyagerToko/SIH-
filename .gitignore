@@ -1,0 +1,79 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# PyInstaller
+*.spec
+dist/
+build/
+
+# Logs and debug
+*.log
+*.pot
+*.pyc
+*.pyo
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Django / Flask stuff
+*.db
+*.sqlite3
+
+# Environment / secrets
+*.env
+.env/
+.venv*/
+*.ini
+*.cfg
+
+# C extensions / compiled
+*.so
+*.dll
+*.lib
+*.pyd
+*.o
+*.a
+*.dylib
+
+# IDE configs
+.vscode/
+.idea/
+*.swp
+
+# Data / cache / models
+cache/
+*.pickle
+*.h5
+*.pkl
+*.ckpt
+*.pt
+*.pth
+
+# Node (if you have frontend)
+node_modules/
+
+# Mac / Windows noise
+.DS_Store
+Thumbs.db

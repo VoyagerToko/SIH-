@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eConsult Analysis Platform - AI-Powered Stakeholder Feedback Analysis</title>
+    <meta name="description" content="Intelligent consultation analysis platform for government agencies. AI-powered sentiment analysis, document processing, and stakeholder feedback insights.">
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Professional government consultation theme */
+            --background: #fafafa;
+            --foreground: #1f2937;
+            --card: #ffffff;
+            --card-foreground: #1f2937;
+            --primary: #2563eb;
+            --primary-foreground: #ffffff;
+            --primary-hover: #1d4ed8;
+            --primary-light: #dbeafe;
+            --secondary: #f1f5f9;
+            --secondary-foreground: #1f2937;
+            --muted: #f1f5f9;
+            --muted-foreground: #6b7280;
+            --accent: #dbeafe;
+            --accent-foreground: #1f2937;
+            --success: #059669;
+            --success-foreground: #ffffff;
+            --warning: #d97706;
+            --warning-foreground: #ffffff;
+            --destructive: #dc2626;
+            --destructive-foreground: #ffffff;
+            --supportive: #059669;
+            --critical: #dc2626;
+            --neutral: #6b7280;
+            --suggestive: #2563eb;
+            --border: #e5e7eb;
+            --input: #e5e7eb;
+            --ring: #2563eb;
+            --radius: 12px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, var(--background) 0%, var(--muted) 100%);
+            color: var(--foreground);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header-icon {
+            background: var(--primary);
+            color: var(--primary-foreground);
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-text h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .header-text p {
+            color: var(--muted-foreground);
+            font-size: 0.875rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            margin: 3rem 0;
+        }
+
+        .hero h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--muted-foreground);
+            max-width: 48rem;
+            margin: 0 auto 2rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .feature-card {
+            text-align: center;
+            padding: 2rem 1.5rem;
+        }
+
+        .feature-icon {
+            width: 3rem;
+            height: 3rem;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            color: var(--muted-foreground);
+            font-size: 0.875rem;
+        }
+
+        /* Upload Section */
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .upload-card {
+            border: 2px dashed var(--border);
+            transition: border-color 0.2s;
+            cursor: pointer;
+        }
+
+        .upload-card:hover {
+            border-color: var(--primary);
+        }
+
+        .upload-card.has-file {
+            border-color: var(--success);
+            background: rgba(5, 150, 105, 0.05);
+        }
+
+        .upload-content {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .upload-icon {
+            width: 3rem;
+            height: 3rem;
+            color: var(--muted-foreground);
+            margin: 0 auto 1rem;
+            font-size: 2rem;
+        }
+
+        .upload-content h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-content p {
+            color: var(--muted-foreground);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: var(--primary-foreground);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--foreground);
+        }
+
+        .btn-outline:hover {
+            background: var(--accent);
+        }
+
+        .btn-lg {
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: calc(var(--radius) - 4px);
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-supportive {
+            background: rgba(5, 150, 105, 0.1);
+            color: var(--supportive);
+        }
+
+        .badge-critical {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--critical);
+        }
+
+        .badge-neutral {
+            background: rgba(107, 114, 128, 0.1);
+            color: var(--neutral);
+        }
+
+        .badge-suggestive {
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--suggestive);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: var(--muted-foreground);
+            font-size: 0.875rem;
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Comments List */
+        .comments-list {
+            space-y: 1rem;
+        }
+
+        .comment-item {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .question-id {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--muted-foreground);
+        }
+
+        .comment-section {
+            margin-bottom: 0.75rem;
+        }
+
+        .comment-section h4 {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .comment-text {
+            color: var(--muted-foreground);
+            font-size: 0.875rem;
+        }
+
+        .comment-summary {
+            font-size: 0.875rem;
+        }
+
+        /* Loading Spinner */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 3rem;
+        }
+
+        .spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 4px solid var(--muted);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 0.5rem;
+            background: var(--muted);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: var(--radius);
+            transition: width 0.3s ease;
+        }
+
+        /* Utilities */
+        .hidden {
+            display: none;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-4 {
+            margin-top: 1rem;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        .py-8 {
+            padding: 2rem 0;
+        }
+
+        /* File input styling */
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-status {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--success);
+        }
+
+        /* Export buttons */
+        .export-options {
+            margin-top: 1rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .hero h2 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Wordcloud image */
+        .wordcloud-container {
+            text-align: center;
+        }
+        
+        .wordcloud-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="header-icon">
+                    🧠
+                </div>
+                <div class="header-text">
+                    <h1>eConsult Analysis Platform</h1>
+                    <p>AI-Powered Stakeholder Feedback Analysis</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container py-8">
+        {% if not results %}
+        <!-- Hero Section (Show only when no results) -->
+        <div id="hero-section" class="hero">
+            <h2>Intelligent Consultation Analysis</h2>
+            <p>
+                Upload your consultation documents and stakeholder feedback to get AI-powered sentiment analysis, 
+                summaries, and insights that help inform better policy decisions.
+            </p>
+            
+            <div class="features-grid">
+                <div class="card feature-card">
+                    <div class="feature-icon">📄</div>
+                    <h3>Document Processing</h3>
+                    <p>Advanced PDF text extraction and contextual chunking</p>
+                </div>
+                <div class="card feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h3>Sentiment Analysis</h3>
+                    <p>AI-powered classification of stakeholder feedback</p>
+                </div>
+                <div class="card feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Visual Insights</h3>
+                    <p>Interactive charts and comprehensive reporting</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Upload Section (Show only when no results) -->
+        <form id="upload-form" action="/analyze" method="POST" enctype="multipart/form-data">
+            <div class="upload-grid">
+                <div class="card upload-card" id="pdf-upload-card">
+                    <div class="upload-content">
+                        <div class="upload-icon">📄</div>
+                        <h3>Draft Legislation PDF</h3>
+                        <p>Upload the consultation document for context analysis</p>
+                        <input type="file" name="pdf_file" id="pdf-file" accept=".pdf">
+                        <button type="button" class="btn btn-outline btn-full" onclick="document.getElementById('pdf-file').click()">
+                            📤 Choose PDF
+                        </button>
+                        <div id="pdf-status" class="file-status hidden"></div>
+                    </div>
+                </div>
+
+                <div class="card upload-card" id="csv-upload-card">
+                    <div class="upload-content">
+                        <div class="upload-icon">🗂️</div>
+                        <h3>Stakeholder Comments CSV</h3>
+                        <p>Upload CSV with "Index" and "Comments" columns</p>
+                        <input type="file" name="csv_file" id="csv-file" accept=".csv">
+                        <button type="button" class="btn btn-outline btn-full" onclick="document.getElementById('csv-file').click()">
+                            📤 Choose CSV
+                        </button>
+                        <div id="csv-status" class="file-status hidden"></div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="analyze-btn" class="btn btn-primary btn-lg btn-full" type="submit">
+                Analyze Stakeholder Feedback
+            </button>
+            
+            <!-- Loading overlay -->
+            <div id="loading-overlay" class="loading-overlay hidden">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">Analyzing stakeholder feedback...</p>
+                <div class="progress-container">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+                <p id="loading-status">Initializing analysis...</p>
+            </div>
+        </form>
+
+        <!-- About Section (Show only when no results) -->
+        <div id="about-section" class="mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">About This Platform</h3>
+                </div>
+                <div class="card-content">
+                    <p class="mb-4">
+                        This platform provides a user-friendly interface for government agencies and policy makers to:
+                    </p>
+                    <ul style="list-style: disc; list-style-position: inside; color: var(--muted-foreground);">
+                        <li style="margin-bottom: 0.5rem;">Extract and process text from consultation documents</li>
+                        <li style="margin-bottom: 0.5rem;">Perform intelligent sentiment analysis on stakeholder feedback</li>
+                        <li style="margin-bottom: 0.5rem;">Generate concise summaries of complex comments</li>
+                        <li style="margin-bottom: 0.5rem;">Visualize feedback patterns and trends</li>
+                        <li style="margin-bottom: 0.5rem;">Export analysis results for further review</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Results Section (Show only when results exist) -->
+        <div id="results-section">
+            <!-- Results Content -->
+            <div id="results-content">
+                <!-- Statistics -->
+                <div class="stats-grid">
+                    <div class="card stat-card">
+                        <div class="stat-number" id="total-comments">{{ results|length }}</div>
+                        <div class="stat-label">Total Comments</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-number supportive" id="supportive-count" style="color: var(--supportive)">{{ supportive_count }}</div>
+                        <div class="stat-label">Supportive</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-number critical" id="critical-count" style="color: var(--critical)">{{ critical_count }}</div>
+                        <div class="stat-label">Critical</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-number neutral" id="neutral-count" style="color: var(--neutral)">{{ neutral_count }}</div>
+                        <div class="stat-label">Neutral</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-number suggestive" id="suggestive-count" style="color: var(--suggestive)">{{ suggestive_count }}</div>
+                        <div class="stat-label">Suggestive</div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="charts-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Sentiment Distribution</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="chart-container">
+                                <canvas id="bar-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Sentiment Breakdown</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="chart-container">
+                                <canvas id="pie-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Wordcloud (if available) -->
+                {% if wordcloud %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Comment Wordcloud</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="wordcloud-container">
+                            <img src="{{ wordcloud }}" alt="Word Cloud of Comments" class="wordcloud-image">
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Export Options -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Export Results</h3>
+                    </div>
+                    <div class="card-content">
+                        <p class="mb-4">Download the analysis results in your preferred format:</p>
+                        <div class="export-options">
+                            <a href="/export/csv/{{ results_csv }}" class="btn btn-outline">
+                                📊 Export as CSV
+                            </a>
+                            <a href="/export/excel/{{ results_csv }}" class="btn btn-outline">
+                                📑 Export as Excel
+                            </a>
+                            <a href="/export/json/{{ results_csv }}" class="btn btn-outline">
+                                🔧 Export as JSON
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comments List -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Stakeholder Comments Analysis</h3>
+                    </div>
+                    <div class="card-content">
+                        <div id="comments-container" class="comments-list">
+                            {% for comment in results %}
+                            <div class="comment-item">
+                                <div class="comment-header">
+                                    <span class="question-id">Index: {{ comment.question_id }}</span>
+                                    <span class="badge badge-{{ comment.analyzed_sentiment|lower }}">{{ comment.analyzed_sentiment }}</span>
+                                </div>
+                                
+                                <div class="comment-section">
+                                    <h4>Original Comment:</h4>
+                                    <p class="comment-text">{{ comment.suggestion_text }}</p>
+                                </div>
+                                
+                                <div class="comment-section">
+                                    <h4>AI Summary:</h4>
+                                    <p class="comment-summary">{{ comment.summary }}</p>
+                                </div>
+                                
+                                <details style="font-size: 0.875rem;">
+                                    <summary style="cursor: pointer; color: var(--muted-foreground);">View Context Used</summary>
+                                    <p style="margin-top: 0.5rem; color: var(--muted-foreground);">{{ comment.context_used }}</p>
+                                </details>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="/" class="btn btn-primary">
+                        Analyze More Feedback
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+
+    <script>
+        // File handling for the upload form
+        document.getElementById('pdf-file')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                document.getElementById('pdf-status').innerHTML = '✓ ' + file.name;
+                document.getElementById('pdf-status').classList.remove('hidden');
+                document.getElementById('pdf-upload-card').classList.add('has-file');
+                checkFilesReady();
+            } else if (file) {
+                showToast('Invalid file type. Please upload a PDF file.', 'error');
+            }
+        });
+
+        document.getElementById('csv-file')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
+                document.getElementById('csv-status').innerHTML = '✓ ' + file.name;
+                document.getElementById('csv-status').classList.remove('hidden');
+                document.getElementById('csv-upload-card').classList.add('has-file');
+                checkFilesReady();
+            } else if (file) {
+                showToast('Invalid file type. Please upload a CSV file.', 'error');
+            }
+        });
+
+        function checkFilesReady() {
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const pdfFile = document.getElementById('pdf-file')?.files[0];
+            const csvFile = document.getElementById('csv-file')?.files[0];
+            
+            if (analyzeBtn && pdfFile && csvFile) {
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            // Simple toast notification
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                background: ${type === 'error' ? 'var(--destructive)' : 'var(--success)'};
+                color: white;
+                border-radius: var(--radius);
+                box-shadow: var(--shadow-lg);
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Chart rendering (only if results exist)
+        {% if results %}
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get chart data from server
+            const chartData = {{ chart_data_json|safe }};
+            
+            // Create bar chart
+            const barCtx = document.getElementById('bar-chart').getContext('2d');
+            new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Supportive', 'Critical', 'Neutral', 'Suggestive'],
+                    datasets: [{
+                        label: 'Count',
+                        data: [
+                            chartData.supportiveCount,
+                            chartData.criticalCount,
+                            chartData.neutralCount,
+                            chartData.suggestiveCount
+                        ],
+                        backgroundColor: ['#059669', '#dc2626', '#6b7280', '#2563eb'],
+                        borderColor: ['#059669', '#dc2626', '#6b7280', '#2563eb'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Create pie chart
+            const pieCtx = document.getElementById('pie-chart').getContext('2d');
+            new Chart(pieCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Supportive', 'Critical', 'Neutral', 'Suggestive'],
+                    datasets: [{
+                        data: [
+                            chartData.supportiveCount,
+                            chartData.criticalCount,
+                            chartData.neutralCount,
+                            chartData.suggestiveCount
+                        ],
+                        backgroundColor: ['#059669', '#dc2626', '#6b7280', '#2563eb'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        });
+        {% endif %}
+
+        // Add CSS animation for toast
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            .loading-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(15, 23, 42, 0.8);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+                color: white;
+            }
+            
+            .loading-overlay.hidden {
+                display: none;
+            }
+            
+            .loading-spinner {
+                width: 60px;
+                height: 60px;
+                border: 5px solid rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                border-top-color: #fff;
+                animation: spin 1s ease-in-out infinite;
+                margin-bottom: 20px;
+            }
+            
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+            
+            .loading-text {
+                font-size: 1.5rem;
+                margin-bottom: 20px;
+            }
+            
+            .progress-container {
+                width: 300px;
+                height: 10px;
+                background-color: rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                overflow: hidden;
+                margin-bottom: 10px;
+            }
+            
+            .progress-bar {
+                height: 100%;
+                width: 0;
+                background-color: var(--primary);
+                transition: width 0.3s ease;
+            }
+            
+            #loading-status {
+                font-size: 0.9rem;
+                color: rgba(255, 255, 255, 0.8);
+            }
+            
+            #results-section {
+                display: none;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

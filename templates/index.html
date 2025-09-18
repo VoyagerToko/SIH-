@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eConsult Analysis Platform - AI-Powered Stakeholder Feedback Analysis</title>
+    <meta name="description" content="Intelligent consultation analysis platform for government agencies. AI-powered sentiment analysis, document processing, and stakeholder feedback insights.">
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Professional government consultation theme */
+            --background: #fafafa;
+            --foreground: #1f2937;
+            --card: #ffffff;
+            --card-foreground: #1f2937;
+            --primary: #2563eb;
+            --primary-foreground: #ffffff;
+            --primary-hover: #1d4ed8;
+            --primary-light: #dbeafe;
+            --secondary: #f1f5f9;
+            --secondary-foreground: #1f2937;
+            --muted: #f1f5f9;
+            --muted-foreground: #6b7280;
+            --accent: #dbeafe;
+            --accent-foreground: #1f2937;
+            --success: #059669;
+            --success-foreground: #ffffff;
+            --warning: #d97706;
+            --warning-foreground: #ffffff;
+            --destructive: #dc2626;
+            --destructive-foreground: #ffffff;
+            --border: #e2e8f0;
+            --input: #e2e8f0;
+            --radius: 0.5rem;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--background);
+            color: var(--foreground);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo svg {
+            width: 2rem;
+            height: 2rem;
+        }
+
+        main {
+            padding-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--foreground);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--foreground);
+        }
+
+        .card {
+            background-color: var(--card);
+            color: var(--card-foreground);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: var(--primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--muted);
+        }
+
+        .btn-lg {
+            padding: 0.75rem 1.5rem;
+            font-size: 1.125rem;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .upload-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .upload-card {
+            border: 2px dashed var(--border);
+            background-color: var(--muted);
+            padding: 2rem;
+            border-radius: var(--radius);
+            text-align: center;
+            transition: border-color 0.2s;
+        }
+
+        .upload-card:hover, .upload-card.has-file {
+            border-color: var(--primary);
+        }
+
+        .upload-card.has-file {
+            background-color: var(--primary-light);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-content h3 {
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 1.25rem;
+        }
+
+        .upload-content p {
+            color: var(--muted-foreground);
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-status {
+            margin-top: 1rem;
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        .file-status.hidden {
+            display: none;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .sentiment-tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .sentiment-supportive {
+            background-color: rgba(5, 150, 105, 0.1);
+            color: var(--success);
+        }
+
+        .sentiment-critical {
+            background-color: rgba(220, 38, 38, 0.1);
+            color: var(--destructive);
+        }
+
+        .sentiment-neutral {
+            background-color: rgba(107, 114, 128, 0.1);
+            color: var(--muted-foreground);
+        }
+
+        .sentiment-suggestive {
+            background-color: rgba(37, 99, 235, 0.1);
+            color: var(--primary);
+        }
+        
+        /* Context display styles */
+        .context-container {
+            border-top: 1px dashed #dee2e6;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #f8f9fa;
+            border-radius: 0 0 10px 10px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            max-height: 0;
+        }
+        
+        .context-heading {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        /* Summary card styles */
+        .summary-card {
+            background-color: #f0f9ff !important;
+            border: 1px solid #bae6fd !important;
+            border-left: 4px solid #0ea5e9 !important;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .summary-card .comment-header {
+            background-color: rgba(14, 165, 233, 0.1);
+        }
+        
+        .summary-card .comment-summary {
+            font-weight: 500;
+        }
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        
+        .context-text {
+            font-size: 0.9rem;
+            color: #495057;
+            font-style: italic;
+            line-height: 1.5;
+        }
+        
+        .context-toggle {
+            background: transparent;
+            border: none;
+            color: #0d6efd;
+            font-size: 0.85rem;
+            cursor: pointer;
+            padding: 0;
+            text-decoration: underline;
+        }
+        
+        .context-toggle:hover {
+            color: #0a58ca;
+        }
+        
+        /* Sentiment Stats Cards */
+        .sentiment-stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 15px;
+            margin: 20px;
+        }
+        
+        .stats-card {
+            flex: 1;
+            min-width: 120px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stats-card.total {
+            background-color: #f1f5f9;
+            border-top: 4px solid #64748b;
+        }
+        
+        .stats-card.supportive {
+            background-color: rgba(5, 150, 105, 0.1);
+            border-top: 4px solid #059669;
+        }
+        
+        .stats-card.critical {
+            background-color: rgba(220, 38, 38, 0.1);
+            border-top: 4px solid #dc2626;
+        }
+        
+        .stats-card.suggestive {
+            background-color: rgba(37, 99, 235, 0.1);
+            border-top: 4px solid #2563eb;
+        }
+        
+        .stats-card.neutral {
+            background-color: rgba(107, 114, 128, 0.1);
+            border-top: 4px solid #6b7280;
+        }
+        
+        .stats-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 5px;
+        }
+        
+        .stats-card.total .stats-number {
+            color: #334155;
+        }
+        
+        .stats-card.supportive .stats-number {
+            color: #059669;
+        }
+        
+        .stats-card.critical .stats-number {
+            color: #dc2626;
+        }
+        
+        .stats-card.suggestive .stats-number {
+            color: #2563eb;
+        }
+        
+        .stats-card.neutral .stats-number {
+            color: #6b7280;
+        }
+        
+        .stats-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #64748b;
+        }
+
+        .comment-card {
+            background-color: var(--card);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s, transform 0.2s;
+            border-left: 4px solid var(--muted);
+        }
+
+        .comment-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .comment-card.supportive {
+            border-left-color: var(--success);
+        }
+
+        .comment-card.critical {
+            border-left-color: var(--destructive);
+        }
+
+        .comment-card.neutral {
+            border-left-color: var(--muted-foreground);
+        }
+
+        .comment-card.suggestive {
+            border-left-color: var(--primary);
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .comment-id {
+            font-weight: 600;
+            color: var(--muted-foreground);
+        }
+
+        .comment-text {
+            margin-bottom: 1rem;
+        }
+
+        .comment-footer {
+            color: var(--muted-foreground);
+            font-size: 0.875rem;
+        }
+
+        .comment-summary {
+            font-style: italic;
+        }
+
+        select {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background-color: var(--card);
+            color: var(--foreground);
+        }
+
+        footer {
+            background-color: var(--muted);
+            color: var(--muted-foreground);
+            padding: 2rem 0;
+            margin-top: 3rem;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+
+        .mt-4 {
+            margin-top: 1.5rem;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .wordcloud-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border-radius: var(--radius);
+            background-color: var(--card);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .wordcloud-container img {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+        }
+
+        .hidden {
+            display: none;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15, 23, 42, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+        }
+        
+        .loading-overlay.hidden {
+            display: none;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        
+        .progress-container {
+            width: 300px;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            width: 0;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <circle cx="10" cy="13" r="2"/>
+                    <path d="m20 17-2-2-2 2"/>
+                    <path d="m14 17-2-2-2 2"/>
+                </svg>
+                eConsult Analysis Platform
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <h1 class="text-center">AI-Powered Stakeholder Feedback Analysis</h1>
+        
+        <div id="upload-section">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Upload Your Documents</h2>
+                </div>
+
+                <!-- File Upload Form -->
+                <form id="upload-form" action="/analyze" method="POST" enctype="multipart/form-data">
+                    <div class="upload-grid">
+                        <div class="upload-card" id="pdf-upload-card">
+                            <div class="upload-content">
+                                <div class="upload-icon">📄</div>
+                                <h3>Draft Legislation PDF</h3>
+                                <p>Upload the consultation document for context analysis</p>
+                                <input type="file" name="pdf_file" id="pdf-file" accept=".pdf">
+                                <button type="button" class="btn btn-outline btn-full" onclick="document.getElementById('pdf-file').click()">
+                                    📤 Choose PDF
+                                </button>
+                                <div id="pdf-status" class="file-status hidden"></div>
+                            </div>
+                        </div>
+
+                        <div class="upload-card" id="csv-upload-card">
+                            <div class="upload-content">
+                                <div class="upload-icon">🗂️</div>
+                                <h3>Stakeholder Comments CSV</h3>
+                                <p>Upload CSV with "Index" and "Comments" columns</p>
+                                <input type="file" name="csv_file" id="csv-file" accept=".csv">
+                                <button type="button" class="btn btn-outline btn-full" onclick="document.getElementById('csv-file').click()">
+                                    📤 Choose CSV
+                                </button>
+                                <div id="csv-status" class="file-status hidden"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="analyze-btn" class="btn btn-primary btn-lg btn-full" type="submit">
+                        Analyze Stakeholder Feedback
+                    </button>
+                </form>
+
+                <!-- Loading overlay -->
+                <div id="loading-overlay" class="loading-overlay hidden">
+                    <div class="loading-spinner"></div>
+                    <p class="loading-text">Analyzing stakeholder feedback...</p>
+                    <div class="progress-container">
+                        <div id="progress-bar" class="progress-bar"></div>
+                    </div>
+                    <p id="loading-status">Initializing analysis...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section (hidden initially) -->
+        <div id="results-section" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Sentiment Analysis Results</h2>
+                </div>
+                
+                <!-- Sentiment Stats Cards -->
+                <div class="sentiment-stats-container">
+                    <div class="stats-card total">
+                        <div class="stats-number" id="total-comments-count">0</div>
+                        <div class="stats-label">Total Comments</div>
+                    </div>
+                    
+                    <div class="stats-card supportive">
+                        <div class="stats-number" id="supportive-count">0</div>
+                        <div class="stats-label">Supportive</div>
+                    </div>
+                    
+                    <div class="stats-card critical">
+                        <div class="stats-number" id="critical-count">0</div>
+                        <div class="stats-label">Critical</div>
+                    </div>
+                    
+                    <div class="stats-card suggestive">
+                        <div class="stats-number" id="suggestive-count">0</div>
+                        <div class="stats-label">Suggestive</div>
+                    </div>
+                    
+                    <div class="stats-card neutral">
+                        <div class="stats-number" id="neutral-count">0</div>
+                        <div class="stats-label">Neutral</div>
+                    </div>
+                </div>
+                
+                <div class="charts-grid">
+                    <div class="card">
+                        <h3>Sentiment Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="bar-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>Sentiment Breakdown</h3>
+                        <div class="chart-container">
+                            <canvas id="pie-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Word Cloud Visualization</h3>
+                    <div class="wordcloud-container">
+                        <img id="wordcloud-img" src="" alt="Word Cloud">
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Comment Analysis</h3>
+                        <select id="sentiment-filter">
+                            <option value="all">All Comments</option>
+                        </select>
+                    </div>
+                    
+                    <div id="comments-container">
+                        <!-- Comments will be inserted here via JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="/" class="btn btn-primary">
+                        Analyze More Feedback
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2025 eConsult Analysis Platform - AI-Powered Stakeholder Feedback Analysis</p>
+        </div>
+    </footer>
+
+    <script>
+        // Document ready function
+        document.addEventListener('DOMContentLoaded', function() {
+            // File handling for the upload form
+            setupFileUploads();
+            
+            // Form submission
+            setupFormSubmission();
+        });
+        
+        // File handling for the upload form
+        function setupFileUploads() {
+            document.getElementById('pdf-file')?.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file && (file.type === 'application/pdf' || file.name.endsWith('.pdf'))) {
+                    document.getElementById('pdf-status').innerHTML = '✓ ' + file.name;
+                    document.getElementById('pdf-status').classList.remove('hidden');
+                    document.getElementById('pdf-upload-card').classList.add('has-file');
+                    checkFilesReady();
+                } else if (file) {
+                    showToast('Invalid file type. Please upload a PDF file.', 'error');
+                }
+            });
+    
+            document.getElementById('csv-file')?.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
+                    document.getElementById('csv-status').innerHTML = '✓ ' + file.name;
+                    document.getElementById('csv-status').classList.remove('hidden');
+                    document.getElementById('csv-upload-card').classList.add('has-file');
+                    checkFilesReady();
+                } else if (file) {
+                    showToast('Invalid file type. Please upload a CSV file.', 'error');
+                }
+            });
+        }
+
+        function checkFilesReady() {
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const pdfFile = document.getElementById('pdf-file')?.files[0];
+            const csvFile = document.getElementById('csv-file')?.files[0];
+            
+            if (analyzeBtn && pdfFile && csvFile) {
+                analyzeBtn.disabled = false;
+            }
+        }
+        
+        // Form submission with AJAX
+        function setupFormSubmission() {
+            const form = document.getElementById('upload-form');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const progressBar = document.getElementById('progress-bar');
+            const loadingStatus = document.getElementById('loading-status');
+            const resultsSection = document.getElementById('results-section');
+            
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const pdfFile = document.getElementById('pdf-file').files[0];
+                    const csvFile = document.getElementById('csv-file').files[0];
+                    
+                    if (!pdfFile || !csvFile) {
+                        showToast('Please select both PDF and CSV files', 'error');
+                        return;
+                    }
+                    
+                    // Show loading overlay
+                    loadingOverlay.classList.remove('hidden');
+                    
+                    // Setup form data for submission
+                    const formData = new FormData();
+                    formData.append('pdf_file', pdfFile);
+                    formData.append('csv_file', csvFile);
+                    
+                    // Start progress animation
+                    let progress = 0;
+                    const progressInterval = setInterval(() => {
+                        // Simulate progress up to 90%
+                        if (progress < 90) {
+                            progress += Math.random() * 5;
+                            progress = Math.min(progress, 90);
+                            progressBar.style.width = progress + '%';
+                            
+                            // Update status message
+                            if (progress < 30) {
+                                loadingStatus.textContent = 'Processing document...';
+                            } else if (progress < 60) {
+                                loadingStatus.textContent = 'Analyzing comments...';
+                            } else {
+                                loadingStatus.textContent = 'Generating visualizations...';
+                            }
+                        }
+                    }, 500);
+                    
+                    // Send AJAX request
+                    fetch('/analyze', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Server error: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Clear progress interval
+                        clearInterval(progressInterval);
+                        
+                        // Complete progress
+                        progressBar.style.width = '100%';
+                        loadingStatus.textContent = 'Complete!';
+                        
+                        // Short delay before showing results
+                        setTimeout(() => {
+                            // Hide loading overlay
+                            loadingOverlay.classList.add('hidden');
+                            
+                            // Show results
+                            displayResults(data);
+                            
+                            // Hide the upload section
+                            document.getElementById('upload-section').style.display = 'none';
+                        }, 500);
+                    })
+                    .catch(error => {
+                        // Clear progress interval
+                        clearInterval(progressInterval);
+                        
+                        // Hide loading overlay
+                        loadingOverlay.classList.add('hidden');
+                        
+                        // Show error message
+                        showToast('Error: ' + error.message, 'error');
+                        console.error('Error:', error);
+                    });
+                });
+            }
+        }
+        
+        // Display results after successful analysis
+        function displayResults(data) {
+            console.log("Results data:", data);
+            
+            const resultsSection = document.getElementById('results-section');
+            if (!resultsSection) return;
+            
+            // Make results section visible
+            resultsSection.style.display = 'block';
+            
+            // Show wordcloud image
+            const wordcloudImg = document.getElementById('wordcloud-img');
+            if (wordcloudImg && data.wordcloud_path) {
+                wordcloudImg.src = data.wordcloud_path;
+            }
+            
+            // Create sentiment charts
+            createSentimentCharts(data.sentiment_counts);
+            
+            // Display comment cards
+            displayCommentCards(data.results);
+            
+            // Scroll to results
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Create charts for sentiment analysis
+        function createSentimentCharts(sentimentCounts) {
+            console.log("Sentiment counts for charts:", sentimentCounts);
+            
+            // Get sentiment data
+            const labels = Object.keys(sentimentCounts);
+            const data = Object.values(sentimentCounts);
+            
+            // Color mapping
+            const colors = {
+                'Supportive': '#059669',
+                'Critical': '#dc2626',
+                'Neutral': '#6b7280',
+                'Suggestive': '#2563eb'
+            };
+            
+            // Update stats cards
+            updateSentimentStats(sentimentCounts);
+            
+            // Get chart colors
+            const backgroundColors = labels.map(label => colors[label] || '#3b82f6');
+            
+            // Create bar chart
+            const barChartElement = document.getElementById('bar-chart');
+            if (barChartElement) {
+                const barCtx = barChartElement.getContext('2d');
+                new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Count',
+                            data: data,
+                            backgroundColor: backgroundColors,
+                            borderColor: backgroundColors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Count: ${context.raw}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Create pie chart
+            const pieChartElement = document.getElementById('pie-chart');
+            if (pieChartElement) {
+                const pieCtx = pieChartElement.getContext('2d');
+                new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: backgroundColors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.raw;
+                                        const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        const percentage = Math.round((value / total) * 100);
+                                        return `${value} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Display comment cards
+        function displayCommentCards(comments) {
+            const commentsContainer = document.getElementById('comments-container');
+            if (!commentsContainer) return;
+            
+            // Clear existing content
+            commentsContainer.innerHTML = '';
+            
+            // First, check if there's a summary row and display it separately
+            const summaryIndex = comments.findIndex(c => c.comment_id === "SUMMARY");
+            if (summaryIndex >= 0) {
+                const summaryComment = comments[summaryIndex];
+                const summaryCard = document.createElement('div');
+                summaryCard.className = 'comment-card summary-card';
+                summaryCard.style.cssText = 'background-color: #f0f9ff; border: 1px solid #bae6fd; margin-bottom: 1.5rem; padding: 1rem;';
+                
+                summaryCard.innerHTML = `
+                    <div class="comment-header" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <div class="comment-id" style="font-weight: 700;">Analysis Summary</div>
+                    </div>
+                    <div class="comment-text" style="font-size: 1.1rem; margin-bottom: 0.5rem;">${summaryComment.comment_text}</div>
+                    <div class="comment-footer">
+                        <div class="comment-summary" style="font-weight: 500;">${summaryComment.summary}</div>
+                    </div>
+                `;
+                
+                // Insert summary at the top
+                commentsContainer.appendChild(summaryCard);
+                
+                // Remove summary from regular comments
+                comments = comments.filter(c => c.comment_id !== "SUMMARY");
+            }
+            
+            // Add each regular comment
+            comments.forEach(comment => {
+                const card = document.createElement('div');
+                card.className = `comment-card ${comment.sentiment.toLowerCase()}`;
+                
+                card.innerHTML = `
+                    <div class="comment-header">
+                        <div class="comment-id">#${comment.comment_id}</div>
+                        <span class="sentiment-tag sentiment-${comment.sentiment.toLowerCase()}">${comment.sentiment}</span>
+                    </div>
+                    <div class="comment-text">${comment.comment_text}</div>
+                    <div class="comment-footer">
+                        <div class="comment-summary">${comment.summary}</div>
+                        <button class="context-toggle" onclick="toggleContext(this)">Show Context</button>
+                    </div>
+                    <div class="context-container" style="display: none;">
+                        <div class="context-heading">Document Context:</div>
+                        <div class="context-text">${comment.context_used || "No context available"}</div>
+                    </div>
+                `;
+                
+                commentsContainer.appendChild(card);
+            });
+            
+            // Add filter functionality
+            setupCommentFilters(comments);
+        }
+        
+        // Setup comment filtering
+        function setupCommentFilters(comments) {
+            const filterSelect = document.getElementById('sentiment-filter');
+            if (!filterSelect) return;
+            
+            // Exclude summary row from filtering
+            const regularComments = comments.filter(c => c.comment_id !== "SUMMARY");
+            
+            // Get unique sentiments
+            const sentiments = [...new Set(regularComments.map(c => c.sentiment))];
+            
+            // Populate filter options
+            filterSelect.innerHTML = '<option value="all">All Comments</option>';
+            sentiments.forEach(sentiment => {
+                filterSelect.innerHTML += `<option value="${sentiment}">${sentiment}</option>`;
+            });
+            
+            // Add filter change handler
+            filterSelect.addEventListener('change', function() {
+                const selectedSentiment = this.value;
+                const commentsContainer = document.getElementById('comments-container');
+                
+                // Find summary card if it exists
+                const summaryCard = document.querySelector('.summary-card');
+                
+                // Filter comments
+                const filteredComments = selectedSentiment === 'all' 
+                    ? regularComments 
+                    : regularComments.filter(c => c.sentiment === selectedSentiment);
+                
+                // Clear container but save summary card if it exists
+                const summaryCardHTML = summaryCard ? summaryCard.outerHTML : '';
+                commentsContainer.innerHTML = '';
+                
+                // Always add summary card back at the top if it exists
+                if (summaryCardHTML) {
+                    commentsContainer.innerHTML = summaryCardHTML;
+                }
+                
+                if (filteredComments.length === 0) {
+                    const noCommentsMsg = document.createElement('p');
+                    noCommentsMsg.className = 'text-center';
+                    noCommentsMsg.textContent = 'No comments with this sentiment.';
+                    commentsContainer.appendChild(noCommentsMsg);
+                    return;
+                }
+                
+                // Add filtered comments
+                filteredComments.forEach(comment => {
+                    const card = document.createElement('div');
+                    card.className = `comment-card ${comment.sentiment.toLowerCase()}`;
+                    
+                    card.innerHTML = `
+                        <div class="comment-header">
+                            <div class="comment-id">#${comment.comment_id}</div>
+                            <span class="sentiment-tag sentiment-${comment.sentiment.toLowerCase()}">${comment.sentiment}</span>
+                        </div>
+                        <div class="comment-text">${comment.comment_text}</div>
+                        <div class="comment-footer">
+                            <div class="comment-summary">${comment.summary}</div>
+                            <button class="context-toggle" onclick="toggleContext(this)">Show Context</button>
+                        </div>
+                        <div class="context-container" style="display: none;">
+                            <div class="context-heading">Document Context:</div>
+                            <div class="context-text">${comment.context_used || "No context available"}</div>
+                        </div>
+                    `;
+                    
+                    commentsContainer.appendChild(card);
+                });
+            });
+        }
+
+        // Update sentiment statistics cards
+        function updateSentimentStats(sentimentCounts) {
+            // Calculate total comments
+            const total = Object.values(sentimentCounts).reduce((sum, count) => sum + count, 0);
+            
+            // Update total count
+            document.getElementById('total-comments-count').textContent = total;
+            
+            // Update individual sentiment counts
+            document.getElementById('supportive-count').textContent = sentimentCounts['Supportive'] || 0;
+            document.getElementById('critical-count').textContent = sentimentCounts['Critical'] || 0;
+            document.getElementById('suggestive-count').textContent = sentimentCounts['Suggestive'] || 0;
+            document.getElementById('neutral-count').textContent = sentimentCounts['Neutral'] || 0;
+        }
+        
+        // Toggle context visibility
+        function toggleContext(button) {
+            const contextContainer = button.closest('.comment-card').querySelector('.context-container');
+            const isHidden = contextContainer.style.display === 'none';
+            
+            // Toggle display
+            contextContainer.style.display = isHidden ? 'block' : 'none';
+            button.textContent = isHidden ? 'Hide Context' : 'Show Context';
+            
+            // Smooth animation
+            if (isHidden) {
+                contextContainer.style.maxHeight = '0';
+                setTimeout(() => {
+                    contextContainer.style.maxHeight = contextContainer.scrollHeight + 'px';
+                }, 10);
+            } else {
+                contextContainer.style.maxHeight = '0';
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            // Simple toast notification
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                background: ${type === 'error' ? '#dc2626' : '#059669'};
+                color: white;
+                border-radius: 0.5rem;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+        
+        // Add CSS animation for toast
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
