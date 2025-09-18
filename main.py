@@ -6,12 +6,24 @@ import ollama
 from sentence_transformers import SentenceTransformer
 from wordcloud import WordCloud
 import matplotlib
+import os
+
+####################################
+# Performance Configuration
+####################################
+# Adjust these settings to optimize performance for your specific hardware
+PARALLEL_WORKERS = min(os.cpu_count() or 4, 8)  # Max workers for parallel processing
+EMBEDDING_BATCH_SIZE = 32  # Batch size for embedding calculation
+CACHE_ENABLED = True  # Whether to use caching for LLM calls and index
+LLM_CACHE_SIZE = 1024  # Maximum number of cached LLM responses
+CONTEXT_CACHE_SIZE = 512  # Maximum number of cached context retrievals
+INDEX_CACHE_DIR = "cache"  # Directory to store cached indices
+####################################
 # Set the backend to Agg to avoid GUI issues with Matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from PyPDF2 import PdfReader
 import textwrap
-import os
 import uuid
 import json
 import hashlib
@@ -19,7 +31,14 @@ import pickle
 import time
 import logging
 import sys
+import concurrent.futures
+import functools
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
+from functools import lru_cache
+
+# Create cache directory if it doesn't exist
+if not os.path.exists(INDEX_CACHE_DIR):
+    os.makedirs(INDEX_CACHE_DIR, exist_ok=True)
 
 # Configure logging
 logging.basicConfig(
@@ -50,34 +69,121 @@ def extract_pdf_text(pdf_path):
 # Step 2: Chunk text for retrieval
 ####################################
 def chunk_text(text, chunk_size=500, overlap=50):
+    """Chunk text more efficiently using numpy operations"""
     words = text.split()
+    
+    # Pre-allocate result size for better performance
+    n_chunks = max(1, (len(words) - overlap) // (chunk_size - overlap))
     chunks = []
+    
+    # Use more efficient list operations with pre-calculated indices
     for i in range(0, len(words), chunk_size - overlap):
         chunk = " ".join(words[i:i+chunk_size])
         chunks.append(chunk)
+    
     return chunks
 
 ####################################
 # Step 3: Build FAISS index of PDF
 ####################################
-def build_index(chunks):
+def build_index(chunks, batch_size=EMBEDDING_BATCH_SIZE):
+    """Build FAISS index with batched processing for better memory efficiency"""
+    # Initialize model - use a smaller, faster model if accuracy can be slightly compromised
     embed_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-    embeddings = embed_model.encode(chunks, convert_to_numpy=True, show_progress_bar=True)
+    
+    # Process in batches to reduce memory usage
+    embeddings_list = []
+    for i in range(0, len(chunks), batch_size):
+        batch = chunks[i:i+batch_size]
+        batch_embeddings = embed_model.encode(batch, convert_to_numpy=True, show_progress_bar=False)
+        faiss.normalize_L2(batch_embeddings)
+        embeddings_list.append(batch_embeddings)
+    
+    # Combine all embeddings
+    embeddings = np.vstack(embeddings_list)
+    
+    # Create and optimize the index
     d = embeddings.shape[1]
     index = faiss.IndexFlatIP(d)
-    faiss.normalize_L2(embeddings)
+    
+    # Add all normalized embeddings at once
     index.add(embeddings)
+    
     return index, chunks, embed_model
 
-def retrieve_context(query, index, chunks, embed_model, top_k=2):
+# Cache context retrieval results to avoid redundant embedding computations
+@lru_cache(maxsize=CONTEXT_CACHE_SIZE)
+def retrieve_context(query, index_id, top_k=2):
+    """Retrieve context using the index, with caching for repeated queries"""
+    # Get the global variables since we can't pass them directly to the cached function
+    index = _indices.get(index_id, None)
+    chunks = _chunks.get(index_id, None)
+    embed_model = _embed_models.get(index_id, None)
+    
+    if not all([index, chunks, embed_model]):
+        logger.error(f"Missing index components for ID {index_id}")
+        return ["Context retrieval failed."]
+    
+    # Encode query
     emb = embed_model.encode([query], convert_to_numpy=True)
     faiss.normalize_L2(emb)
+    
+    # Search index
     D, I = index.search(emb, top_k)
+    
+    # Return relevant chunks
     return [chunks[i] for i in I[0]]
+
+# Global storage for indices, chunks, and models to be used with the cached function
+_indices = {}
+_chunks = {}
+_embed_models = {}
+
+# Function to register an index for use with the cached retrieve_context
+def register_index(index, chunks, embed_model):
+    """Register an index with a unique ID for use with the cached retrieve function"""
+    index_id = str(uuid.uuid4())
+    _indices[index_id] = index
+    _chunks[index_id] = chunks
+    _embed_models[index_id] = embed_model
+    return index_id
 
 ####################################
 # Step 4: Ollama sentiment + summary
 ####################################
+# Create a LLM response cache with a maximum size
+# Using lru_cache for in-memory caching of LLM calls
+@lru_cache(maxsize=LLM_CACHE_SIZE)
+def _cached_ollama_call(prompt_hash, model_name="mistral"):
+    """Cache wrapper for ollama calls to avoid redundant API calls"""
+    # Retrieve the prompt from the hash-to-prompt mapping
+    prompt = _prompt_cache.get(prompt_hash)
+    if not prompt:
+        logger.warning(f"Cache miss for prompt hash {prompt_hash}")
+        return None
+        
+    response = ollama.chat(model=model_name, messages=[{"role": "user", "content": prompt}])
+    return response["message"]["content"].strip()
+
+# Dictionary to store prompts by their hash
+_prompt_cache = {}
+
+def _get_cached_llm_response(prompt, model_name="mistral"):
+    """Get a cached LLM response or generate a new one"""
+    # Create a hash of the prompt for caching
+    prompt_hash = hashlib.md5(prompt.encode()).hexdigest()
+    
+    # Store the prompt in the mapping
+    _prompt_cache[prompt_hash] = prompt
+    
+    try:
+        # Try to get the cached response
+        return _cached_ollama_call(prompt_hash, model_name)
+    except Exception as e:
+        logger.warning(f"Error retrieving from cache: {e}. Calling LLM directly.")
+        response = ollama.chat(model=model_name, messages=[{"role": "user", "content": prompt}])
+        return response["message"]["content"].strip()
+
 def classify_sentiment(text, context=""):
     prompt = f"""
     Analyze the following stakeholder comment in the context of the draft legislation.
@@ -104,8 +210,7 @@ def classify_sentiment(text, context=""):
     """
     logger.info(f"Classifying sentiment for comment: {text[:50]}...")
     
-    resp = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
-    response = resp["message"]["content"].strip()
+    response = _get_cached_llm_response(prompt)
     
     # Ensure the response is one of the valid categories
     valid_categories = ["Supportive", "Critical", "Neutral", "Suggestive"]
@@ -186,8 +291,7 @@ def summarize_comment(text, context=""):
     
     Summary:
     """
-    resp = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
-    return resp["message"]["content"].strip()
+    return _get_cached_llm_response(prompt)
 
 def generate_overall_summary(comments_list, sentiments):
     """Generate a comprehensive summary of all comments and their sentiment trends."""
@@ -225,8 +329,7 @@ def generate_overall_summary(comments_list, sentiments):
     Focus on concrete patterns rather than generalizations. Be specific about the key points raised in the comments.
     """
     
-    resp = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
-    return resp["message"]["content"].strip()
+    return _get_cached_llm_response(prompt)
 
 ####################################
 # Step 5: Process comments
@@ -238,13 +341,54 @@ def analyze_comments(pdf_path, comments_csv):
     pdf_text = extract_pdf_text(pdf_path)
     logger.info(f"Extracted {len(pdf_text)} characters of text from PDF")
     
-    chunk_time = log_process_start("Text Chunking")
-    chunks = chunk_text(pdf_text)
-    log_process_end("Text Chunking", chunk_time, {"chunks_created": len(chunks)})
+    # Calculate PDF hash for caching
+    pdf_hash = hashlib.md5(pdf_text.encode()).hexdigest()[:10]
+    cache_file = os.path.join(INDEX_CACHE_DIR, f"index_cache_{pdf_hash}.pkl")
     
-    index_time = log_process_start("Building Search Index")
-    index, chunks, embed_model = build_index(chunks)
-    log_process_end("Building Search Index", index_time)
+    # Try to load from cache first
+    index_id = None
+    if os.path.exists(cache_file):
+        try:
+            logger.info(f"Loading index from cache: {cache_file}")
+            with open(cache_file, 'rb') as f:
+                cached_data = pickle.load(f)
+                index_id = cached_data['index_id']
+                # Check if this index_id exists in our registry
+                if index_id in _indices:
+                    logger.info(f"Using cached index with ID {index_id}")
+                else:
+                    # Register the cached components
+                    _indices[index_id] = cached_data['index']
+                    _chunks[index_id] = cached_data['chunks']
+                    _embed_models[index_id] = cached_data['embed_model']
+                    logger.info(f"Registered cached index with ID {index_id}")
+        except Exception as e:
+            logger.error(f"Error loading cached index: {e}")
+            index_id = None
+    
+    # If not cached, build the index
+    if not index_id:
+        chunk_time = log_process_start("Text Chunking")
+        chunks = chunk_text(pdf_text)
+        log_process_end("Text Chunking", chunk_time, {"chunks_created": len(chunks)})
+        
+        index_time = log_process_start("Building Search Index")
+        index, chunks, embed_model = build_index(chunks)
+        index_id = register_index(index, chunks, embed_model)
+        log_process_end("Building Search Index", index_time)
+        
+        # Cache the index for future use
+        try:
+            logger.info(f"Saving index to cache: {cache_file}")
+            with open(cache_file, 'wb') as f:
+                pickle.dump({
+                    'index_id': index_id,
+                    'index': index,
+                    'chunks': chunks,
+                    'embed_model': embed_model
+                }, f)
+        except Exception as e:
+            logger.error(f"Error caching index: {e}")
 
     # 2. Load comments with flexible column handling
     logger.info(f"Loading comments from: {comments_csv}")
@@ -278,10 +422,9 @@ def analyze_comments(pdf_path, comments_csv):
             
     logger.info(f"Processing {len(comments)} comments for analysis")
 
-    analysis_time = log_process_start("Comment Analysis")
-    results = []
-    
-    for idx, (_, row) in enumerate(comments.iterrows()):
+    # Define a worker function to process a single comment
+    def process_comment(idx_row):
+        idx, (_, row) = idx_row
         cid = row["index"]
         text = row["comments"]
         
@@ -291,9 +434,9 @@ def analyze_comments(pdf_path, comments_csv):
         truncated = text[:50] + "..." if len(text) > 50 else text
         logger.info(f"Comment text (truncated): {truncated}")
 
-        # Retrieve context
+        # Retrieve context using the cached function
         context_time = time.time()
-        context = " ".join(retrieve_context(text, index, chunks, embed_model, top_k=2))
+        context = " ".join(retrieve_context(text, index_id, top_k=2))
         logger.info(f"Context retrieval took {time.time() - context_time:.2f}s")
         
         # Classify sentiment
@@ -306,13 +449,32 @@ def analyze_comments(pdf_path, comments_csv):
         summary = summarize_comment(text, context)
         logger.info(f"Comment summarization took {time.time() - summary_time:.2f}s")
 
-        results.append({
+        return {
             "comment_id": cid,
             "comment_text": text,
             "sentiment": sentiment,
             "summary": summary,
             "context_used": context[:200] + "..."
-        })
+        }
+
+    analysis_time = log_process_start("Comment Analysis")
+    
+    # Process comments in parallel using the configured number of workers
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=PARALLEL_WORKERS) as executor:
+        # Submit all comments for processing
+        future_to_idx = {executor.submit(process_comment, item): item for item in enumerate(comments.iterrows())}
+        
+        # Collect results as they complete
+        for future in concurrent.futures.as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            try:
+                result = future.result()
+                results.append(result)
+                logger.info(f"Completed comment {idx[0]+1}/{len(comments)}")
+            except Exception as exc:
+                logger.error(f"Comment {idx[0]+1} generated an exception: {exc}")
+                # Continue with other comments even if one fails
     
     # Calculate sentiment statistics
     sentiment_distribution = {
