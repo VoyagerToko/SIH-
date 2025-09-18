@@ -184,9 +184,14 @@ def _get_cached_llm_response(prompt, model_name="mistral"):
         response = ollama.chat(model=model_name, messages=[{"role": "user", "content": prompt}])
         return response["message"]["content"].strip()
 
-def classify_sentiment(text, context=""):
+def analyze_and_summarize_comment(text, context=""):
+    """Combined function that performs both sentiment analysis and summarization in a single LLM call.
+    This reduces API calls by 50% and improves execution speed."""
+    
     prompt = f"""
     Analyze the following stakeholder comment in the context of the draft legislation.
+    
+    TASK 1 - SENTIMENT CLASSIFICATION:
     
     Categories:
     - Supportive: Comment expresses agreement, approval, or positive feedback about the proposal. Look for praise, agreement, or expressions that the proposal will have positive effects.
@@ -200,35 +205,61 @@ def classify_sentiment(text, context=""):
     3. If a comment mainly offers suggestions, recommendations, or alternative approaches, classify as Suggestive.
     4. If a comment is factual, asks questions without expressing opinions, or presents balanced views, classify as Neutral.
     
-    You MUST choose the ONE category that best matches the overall tone and content. DO NOT default to only using certain categories.
+    TASK 2 - SUMMARIZATION:
+    Summarize the comment in one short, precise sentence that captures its key point or main concern.
     
     Context: {context}
     Comment: "{text}"
     
-    First analyze the sentiment thoroughly, focusing on the tone and specific language used, then respond with ONLY ONE of these exact category names: Supportive, Critical, Neutral, or Suggestive.
+    Your response MUST follow this exact format:
+    SENTIMENT: [one of: Supportive, Critical, Neutral, or Suggestive]
+    SUMMARY: [your one-sentence summary of the comment]
+    
     Do not include any other text in your response.
     """
-    logger.info(f"Classifying sentiment for comment: {text[:50]}...")
+    
+    logger.info(f"Analyzing comment: {text[:50]}...")
     
     response = _get_cached_llm_response(prompt)
     
-    # Ensure the response is one of the valid categories
+    # Parse the response to extract sentiment and summary
+    sentiment = None
+    summary = None
+    
+    for line in response.split('\n'):
+        line = line.strip()
+        if line.startswith('SENTIMENT:'):
+            sentiment = line[len('SENTIMENT:'):].strip()
+        elif line.startswith('SUMMARY:'):
+            summary = line[len('SUMMARY:'):].strip()
+    
+    # Validate sentiment
     valid_categories = ["Supportive", "Critical", "Neutral", "Suggestive"]
     
-    # Clean up response and handle edge cases
-    for category in valid_categories:
-        if category.lower() in response.lower():
-            logger.info(f"Sentiment classified as: {category}")
-            return category
+    if sentiment in valid_categories:
+        logger.info(f"Sentiment classified as: {sentiment}")
+    else:
+        # Apply fallback heuristics if sentiment extraction failed
+        logger.warning(f"Sentiment extraction failed from response: {response}")
+        sentiment = _extract_sentiment_with_heuristics(text, response)
     
-    # If no valid category found, use improved heuristics to assign one
-    response_lower = response.lower()
+    # Validate summary
+    if not summary or len(summary) < 5:
+        logger.warning(f"Summary extraction failed from response: {response}")
+        summary = _generate_fallback_summary(text)
     
+    return sentiment, summary
+
+def _extract_sentiment_with_heuristics(text, response=""):
+    """Fallback heuristic-based sentiment extraction"""
     # Look for more specific keywords to improve categorization
     supportive_words = ["support", "positive", "agree", "good", "excellent", "approve", "like", "appreciate", "welcome"]
     critical_words = ["critic", "negative", "disagree", "bad", "poor", "concern", "issue", "problem", "oppose", "against", "flawed"]
     suggestive_words = ["suggest", "recommend", "could", "would", "may", "might", "consider", "propose", "alternative", "option", "improve"]
     neutral_words = ["neutral", "fact", "inform", "data", "balance", "question", "clarify", "ask", "what", "how", "when", "explain"]
+    
+    # Try to extract sentiment from the response first
+    response_lower = response.lower()
     
     # Count matches for each category
     supportive_count = sum(1 for word in supportive_words if word in response_lower)
@@ -282,16 +313,25 @@ def classify_sentiment(text, context=""):
         logger.info("Sentiment classified as: Neutral (via heuristics)")
         return "Neutral"
 
+def _generate_fallback_summary(text):
+    """Generate a fallback summary if the LLM-based summary extraction fails"""
+    # Simple truncation-based summary for fallback
+    words = text.split()
+    if len(words) <= 15:
+        return text
+    else:
+        return " ".join(words[:15]) + "..."
+
+# Maintain backward compatibility with the original separate functions
+def classify_sentiment(text, context=""):
+    """Legacy function maintained for backward compatibility"""
+    sentiment, _ = analyze_and_summarize_comment(text, context)
+    return sentiment
+
 def summarize_comment(text, context=""):
-    prompt = f"""
-    Summarize the following stakeholder comment in one short, precise sentence.
-    
-    Context: {context}
-    Comment: "{text}"
-    
-    Summary:
-    """
-    return _get_cached_llm_response(prompt)
+    """Legacy function maintained for backward compatibility"""
+    _, summary = analyze_and_summarize_comment(text, context)
+    return summary
 
 def generate_overall_summary(comments_list, sentiments):
     """Generate a comprehensive summary of all comments and their sentiment trends."""
@@ -439,15 +479,10 @@ def analyze_comments(pdf_path, comments_csv):
         context = " ".join(retrieve_context(text, index_id, top_k=2))
         logger.info(f"Context retrieval took {time.time() - context_time:.2f}s")
         
-        # Classify sentiment
-        sentiment_time = time.time()
-        sentiment = classify_sentiment(text, context)
-        logger.info(f"Sentiment classification took {time.time() - sentiment_time:.2f}s, Result: {sentiment}")
-        
-        # Generate summary
-        summary_time = time.time()
-        summary = summarize_comment(text, context)
-        logger.info(f"Comment summarization took {time.time() - summary_time:.2f}s")
+        # Combined sentiment and summary analysis (single LLM call)
+        analysis_time = time.time()
+        sentiment, summary = analyze_and_summarize_comment(text, context)
+        logger.info(f"Combined sentiment and summary analysis took {time.time() - analysis_time:.2f}s, Sentiment: {sentiment}")
 
         return {
             "comment_id": cid,

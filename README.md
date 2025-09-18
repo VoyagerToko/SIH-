@@ -2,6 +2,8 @@
 
 This is a Flask web application for analyzing stakeholder feedback on consultation documents. It uses NLP techniques to classify sentiment, summarize comments, and generate visualizations.
 
+> **Performance Optimized**: This application includes several optimizations for processing large comment datasets efficiently. See [PERFORMANCE.md](PERFORMANCE.md) for details.
+
 ## Features
 
 - Upload consultation documents (PDF) and stakeholder comments (CSV)
